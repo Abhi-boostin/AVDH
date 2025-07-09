@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { getYoutubeDownloadUrl } from './services/youtubeService.js';
+import { streamVideo } from './services/download.js';
 
 dotenv.config();
 
@@ -11,18 +11,13 @@ app.get('/', (req, res) => {
   res.send('Hello World');
 });
 
-// YouTube download API
-app.get('/api/youtube', async (req, res) => {
+// Universal downloader endpoint
+app.get('/api/download', (req, res) => {
   const videoUrl = req.query.url;
   if (!videoUrl) {
     return res.status(400).json({ error: 'Missing url query parameter' });
   }
-  try {
-    const data = await getYoutubeDownloadUrl(videoUrl);
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch video', details: err });
-  }
+  streamVideo(videoUrl, res);
 });
 
 app.listen(port, () => {

@@ -1,0 +1,8 @@
+npm i -y
+nodemon added
+mkdir -p src/controllers src/routes src/middlewares src/services src/utils
+touch .env README.md
+made the structure
+made env added port
+made the boilerplate index.js
+installed express godammit

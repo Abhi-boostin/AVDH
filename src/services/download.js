@@ -1,4 +1,4 @@
-// service/download.js
+
 import youtubedl from 'youtube-dl-exec';
 
 /**
@@ -6,6 +6,7 @@ import youtubedl from 'youtube-dl-exec';
  * @param {string} videoUrl - The URL of the video to download.
  * @param {object} res - The Express response object to stream data to.
  */
+
 export function streamVideo(videoUrl, res) {
   // Set headers for file download
   res.setHeader('Content-Disposition', 'attachment; filename="video.mp4"');
@@ -25,5 +26,15 @@ export function streamVideo(videoUrl, res) {
 
   subprocess.on('error', (err) => {
     res.status(500).json({ error: 'Failed to download video', details: err.message });
+  });
+
+  subprocess.on('close', (code) => {
+    if (code !== 0) {
+      // Only send error if response hasn't already been sent
+      if (!res.headersSent) {
+        res.status(500).json({ error: `yt-dlp exited with code ${code}. The site may not be supported or there was a download error.` });
+      }
+      console.error(`yt-dlp exited with code ${code}`);
+    }
   });
 }

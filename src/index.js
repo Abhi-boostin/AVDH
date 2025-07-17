@@ -3,15 +3,12 @@ import dotenv from 'dotenv';
 import { streamVideo } from './services/download.js';
 
 dotenv.config();
-
 const app = express();
 const port = process.env.PORT || 3000;
-
+app.use(express.static('public'));
 app.get('/', (req, res) => {
   res.send('Hello World');
 });
-
-// Universal downloader endpoint
 app.get('/api/download', (req, res) => {
   const videoUrl = req.query.url;
   if (!videoUrl) {

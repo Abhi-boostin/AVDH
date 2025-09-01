@@ -1,21 +1,13 @@
 {
   "name": "avdh",
-  "version": "1.0.0",
-  "description": "All Video Downloader Hub - Simple URL to Download",
-  "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "install-yt-dlp": "python3 -m pip install yt-dlp",
+    "setup": "npm install && npm run install-yt-dlp"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "express": "^4.21.2",
-    "fs-extra": "^11.3.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
-  "keywords": ["downloader", "video", "audio", "yt-dlp", "avdh"],
-  "author": "AVDH",
-  "license": "MIT"
+    "cors": "^2.8.5"
+  }
 }

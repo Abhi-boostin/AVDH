@@ -1,54 +1,73 @@
-const { exec } = require('child_process');
-const path = require('path');
-const fs = require('fs-extra');
+const { spawn } = require('child_process');
 const { promisify } = require('util');
+const { exec } = require('child_process');
 
 const execAsync = promisify(exec);
 
 class DownloadController {
     constructor() {
-        this.downloadsDir = path.join(__dirname, '../downloads');
-        // Full path to yt-dlp.exe
-        this.ytdlpPath = 'C:\\Users\\Abhimanyu\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\Scripts\\yt-dlp.exe';
+        // Try different yt-dlp commands until one works
+        this.possibleCommands = [
+            'yt-dlp',           // System PATH
+            'python3 -m yt_dlp', // Python module
+            'python -m yt_dlp',  // Python (Windows)
+            './yt-dlp',         // Local binary
+            'yt-dlp.exe'        // Windows binary
+        ];
+    }
+
+    async findWorkingYtdlp() {
+        for (const cmd of this.possibleCommands) {
+            try {
+                await execAsync(`${cmd} --version`);
+                return cmd;
+            } catch (error) {
+                continue;
+            }
+        }
+        throw new Error('yt-dlp not found. Please install it: pip install yt-dlp');
     }
 
     downloadMedia = async (req, res) => {
         try {
             const { url } = req.body;
-            const fileId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-            const outputPath = path.join(this.downloadsDir, `${fileId}.%(ext)s`);
-
-            // Simple yt-dlp command with full path - downloads best quality automatically
-            const command = `"${this.ytdlpPath}" -o "${outputPath}" "${url}"`;
             
-            await execAsync(command);
+            // Find working yt-dlp command
+            const ytdlpCmd = await this.findWorkingYtdlp();
             
-            // Find the downloaded file
-            const files = await fs.readdir(this.downloadsDir);
-            const downloadedFile = files.find(file => file.startsWith(fileId));
+            // Get filename
+            const infoCommand = `${ytdlpCmd} --print "%(title)s.%(ext)s" "${url}"`;
+            const { stdout: filename } = await execAsync(infoCommand);
+            const cleanFilename = filename.trim().replace(/[<>:"/\\|?*]/g, '_');
             
-            if (!downloadedFile) {
-                throw new Error('Download failed');
-            }
-
-            // Auto cleanup after 1 hour
-            setTimeout(async () => {
-                try {
-                    await fs.unlink(path.join(this.downloadsDir, downloadedFile));
-                } catch (error) {}
-            }, 60 * 60 * 1000);
-
-            res.json({
-                success: true,
-                filename: downloadedFile,
-                downloadUrl: `/downloads/${downloadedFile}`
+            // Set download headers
+            res.setHeader('Content-Disposition', `attachment; filename="${cleanFilename}"`);
+            res.setHeader('Content-Type', 'application/octet-stream');
+            
+            // Stream directly to user
+            const args = ytdlpCmd.split(' ');
+            const command = args;
+            const baseArgs = args.slice(1);
+            const fullArgs = [...baseArgs, '--format', 'best[height<=1080]/best', '--output', '-', url];
+            
+            const ytdlpProcess = spawn(command, fullArgs);
+            ytdlpProcess.stdout.pipe(res);
+            
+            ytdlpProcess.on('error', (error) => {
+                if (!res.headersSent) {
+                    res.status(500).json({
+                        success: false,
+                        error: 'Download failed',
+                        message: error.message
+                    });
+                }
             });
-
+            
         } catch (error) {
             res.status(500).json({
                 success: false,
-                error: 'Download failed',
-                message: error.message
+                error: 'yt-dlp not available',
+                message: 'Run: npm run setup'
             });
         }
     }

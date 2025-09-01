@@ -5,64 +5,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AVDH - Simple Downloader</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Your existing styles -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        .pixel-font {
+            font-family: 'Press Start 2P', monospace;
+        }
+        
+        .pixel-border {
+            border: 4px solid #000;
+        }
+        
+        .pixel-button {
+            background: #000;
+            color: white;
+            border: 4px solid #000;
+        }
+        
+        .pixel-button:hover {
+            background: #333;
+        }
+        
+        .pixel-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #22c55e;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background-color: #374151;
+            border: 4px solid #000;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            width: 0%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+    </style>
 </head>
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-    
-    .pixel-font {
-        font-family: 'Press Start 2P', monospace;
-    }
-    
-    .pixel-border {
-        border: 4px solid #000;
-    }
-    
-    .pixel-button {
-        background: #000;
-        color: white;
-        border: 4px solid #000;
-    }
-    
-    .pixel-button:hover {
-        background: #333;
-    }
-    
-    .pixel-button:disabled {
-        background: #666;
-        cursor: not-allowed;
-    }
-    
-    .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #22c55e;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    .progress-bar {
-        width: 100%;
-        height: 20px;
-        background-color: #374151;
-        border: 2px solid #000;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #22c55e, #16a34a);
-        width: 0%;
-        transition: width 0.3s ease;
-    }
-</style>
 <body class="bg-gray-900 text-green-400 min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <div class="text-center mb-12">
@@ -94,6 +106,28 @@
                 </button>
             </div>
             
+            <!-- Progress Section -->
+            <div id="progressSection" class="hidden mb-8">
+                <div class="text-center mb-4">
+                    <div class="loader mx-auto mb-4"></div>
+                    <p class="pixel-font text-xl text-yellow-400" id="progressTitle">
+                        ⏳ PREPARING DOWNLOAD...
+                    </p>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="progress-bar mb-4">
+                    <div class="progress-fill" id="progressFill"></div>
+                    <div class="progress-text" id="progressText">0%</div>
+                </div>
+                
+                <div class="text-center">
+                    <p class="pixel-font text-sm text-green-300" id="progressDetails">
+                        Connecting to server...
+                    </p>
+                </div>
+            </div>
+            
             <div id="status" class="hidden text-center mb-6">
                 <p class="pixel-font text-xl text-yellow-400"></p>
             </div>
@@ -101,10 +135,90 @@
     </div>
 
     <script>
+        // Update progress bar
+        function updateProgress(percent, text, details) {
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressDetails = document.getElementById('progressDetails');
+            
+            progressFill.style.width = percent + '%';
+            progressText.textContent = Math.round(percent) + '%';
+            if (details) progressDetails.textContent = details;
+        }
+
+        // Show/hide progress section
+        function showProgress() {
+            document.getElementById('progressSection').classList.remove('hidden');
+            document.getElementById('status').classList.add('hidden');
+        }
+
+        function hideProgress() {
+            document.getElementById('progressSection').classList.add('hidden');
+        }
+
+        // Download with real progress tracking
+        async function downloadWithProgress(url) {
+            const response = await fetch('/api/download', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({url})
+            });
+
+            if (!response.ok) {
+                throw new Error('Download failed');
+            }
+
+            // Get content length for progress calculation
+            const contentLength = response.headers.get('Content-Length');
+            const total = contentLength ? parseInt(contentLength, 10) : 0;
+            
+            // Get filename from headers
+            const contentDisposition = response.headers.get('Content-Disposition');
+            const filename = contentDisposition 
+                ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') || 'download'
+                : 'download';
+
+            let loaded = 0;
+            const reader = response.body.getReader();
+            const chunks = [];
+
+            // Read stream with progress tracking
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) break;
+                
+                chunks.push(value);
+                loaded += value.length;
+                
+                if (total > 0) {
+                    const percent = (loaded / total) * 100;
+                    updateProgress(percent, null, `Downloaded: ${(loaded / 1024 / 1024).toFixed(2)} MB`);
+                } else {
+                    // Unknown file size - show data downloaded
+                    updateProgress(50, null, `Downloaded: ${(loaded / 1024 / 1024).toFixed(2)} MB`);
+                }
+            }
+
+            // Create blob and download
+            const blob = new Blob(chunks);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = downloadUrl; 
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+
+            return filename;
+        }
+
         async function downloadMedia() {
             const url = document.getElementById('urlInput').value.trim();
             const btn = document.getElementById('downloadBtn');
-            const status = document.getElementById('status');
+            const progressTitle = document.getElementById('progressTitle');
             
             if (!url) {
                 alert('PLEASE ENTER A URL');
@@ -114,57 +228,44 @@
             // Show loading state
             btn.disabled = true;
             btn.textContent = 'DOWNLOADING...';
-            status.classList.remove('hidden');
-            status.querySelector('p').textContent = '⏳ PREPARING DOWNLOAD...';
+            showProgress();
+            
+            updateProgress(0, null, 'Connecting to server...');
+            progressTitle.textContent = '⏳ PREPARING DOWNLOAD...';
             
             try {
-                // Create a hidden link to trigger download
-                const response = await fetch('/api/download', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({url})
-                });
+                // Update progress stages
+                setTimeout(() => updateProgress(10, null, 'Processing URL...'), 500);
+                setTimeout(() => updateProgress(20, null, 'Starting download...'), 1000);
                 
-                if (response.ok) {
-                    // Get filename from response headers
-                    const contentDisposition = response.headers.get('Content-Disposition');
-                    const filename = contentDisposition 
-                        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') || 'download'
-                        : 'download';
-                    
-                    // Convert response to blob and download
-                    const blob = await response.blob();
-                    const downloadUrl = window.URL.createObjectURL(blob);
-                    
-                    // Create and click download link
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    
-                    // Cleanup
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(downloadUrl);
-                    
-                    status.querySelector('p').textContent = '✅ DOWNLOAD COMPLETE!';
-                    
-                } else {
-                    const errorData = await response.json();
-                    status.querySelector('p').textContent = `❌ ${errorData.error}`;
-                }
+                progressTitle.textContent = '📥 DOWNLOADING...';
+                
+                // Start actual download with progress
+                const filename = await downloadWithProgress(url);
+                
+                // Success
+                updateProgress(100, null, 'Download complete!');
+                progressTitle.textContent = '✅ DOWNLOAD COMPLETE!';
+                
+                setTimeout(() => {
+                    hideProgress();
+                    document.getElementById('status').classList.remove('hidden');
+                    document.getElementById('status').querySelector('p').textContent = `✅ ${filename} DOWNLOADED!`;
+                }, 1000);
                 
             } catch (error) {
-                status.querySelector('p').textContent = '❌ DOWNLOAD FAILED. PLEASE TRY AGAIN.';
+                hideProgress();
+                document.getElementById('status').classList.remove('hidden');
+                document.getElementById('status').querySelector('p').textContent = '❌ DOWNLOAD FAILED. PLEASE TRY AGAIN.';
             } finally {
                 // Reset button
                 btn.disabled = false;
                 btn.textContent = '📥 DOWNLOAD';
                 
-                // Hide status after 3 seconds
+                // Hide status after 5 seconds
                 setTimeout(() => {
-                    status.classList.add('hidden');
-                }, 3000);
+                    document.getElementById('status').classList.add('hidden');
+                }, 5000);
             }
         }
         

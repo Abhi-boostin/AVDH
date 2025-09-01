@@ -1,21 +1,21 @@
 {
   "name": "avdh",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "All Video Downloader Hub - Simple URL to Download",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --watch src --exec node src/index.js",
-    "start": "node src/index.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
   "dependencies": {
-    "dotenv": "^17.1.0",
-    "express": "^5.1.0",
-    "nodemon": "^3.1.10",
-    "youtube-dl-exec": "^3.0.22"
-  }
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "fs-extra": "^11.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["downloader", "video", "audio", "yt-dlp", "avdh"],
+  "author": "AVDH",
+  "license": "MIT"
 }

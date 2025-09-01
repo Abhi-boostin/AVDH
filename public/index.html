@@ -1,62 +1,291 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>All video Download Hub</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 min-h-screen flex items-center justify-center">
-  <div class="bg-white/90 shadow-2xl rounded-2xl px-8 py-10 w-full max-w-md flex flex-col items-center">
-    <h1 class="text-3xl font-extrabold text-purple-700 mb-6 text-center tracking-tight drop-shadow">All Video Downloader Hub</h1>
-    <input type="text" id="urlInput" placeholder="Paste YouTube link here" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400 text-lg mb-4 transition" />
-    <select id="typeSelect" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400 text-lg mb-4 transition">
-      <option value="video">Video (mp4)</option>
-      <option value="audio">Audio (mp3)</option>
-    </select>
-    <button id="getBtn" onclick="getDownloadLink()" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-pink-500 hover:to-purple-500 text-white font-bold py-3 rounded-lg shadow-lg transition mb-2 disabled:opacity-60 disabled:cursor-not-allowed">Get Download Link</button>
-    <button id="refreshBtn" onclick="refreshDownloader()" style="display:none;" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-lg shadow mb-2 transition">Refresh</button>
-    <div id="result" class="mt-6 min-h-[2rem] w-full text-center text-lg"></div>
-    <footer class="mt-8 text-xs text-gray-400 text-center">&copy; Made by Abhiboostin</footer>
-  </div>
-  <script>
-    async function getDownloadLink() {
-      const url = document.getElementById('urlInput').value;
-      const type = document.getElementById('typeSelect').value;
-      const getBtn = document.getElementById('getBtn');
-      const refreshBtn = document.getElementById('refreshBtn');
-      const resultDiv = document.getElementById('result');
-      if (!url) {
-        resultDiv.innerText = 'Please enter a URL.';
-        return;
-      }
-      getBtn.disabled = true;
-      resultDiv.innerHTML = '<span class="text-purple-500 font-semibold animate-pulse">Processing... Please wait.</span>';
-      try {
-        const res = await fetch(`/api/download?url=${encodeURIComponent(url)}&type=${type}`);
-        if (res.ok) {
-          const blob = await res.blob();
-          const downloadUrl = window.URL.createObjectURL(blob);
-          resultDiv.innerHTML = `<a href="${downloadUrl}" download="video.mp4" class="inline-block bg-gradient-to-r from-green-400 to-blue-500 hover:from-blue-500 hover:to-green-400 text-white font-bold py-2 px-6 rounded-lg shadow-lg transition">Download Video</a>`;
-        } else {
-          const data = await res.json();
-          resultDiv.innerHTML = `<span class="text-red-500 font-semibold">${data.error || 'Error fetching video'}</span>`;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVDH - Simple Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        .pixel-font {
+            font-family: 'Press Start 2P', monospace;
         }
-      } catch (err) {
-        resultDiv.innerHTML = '<span class="text-red-500 font-semibold">An error occurred. Please try again.</span>';
-      }
-      getBtn.style.display = 'none';
-      refreshBtn.style.display = 'inline-block';
-    }
+        
+        .pixel-border {
+            border: 4px solid #000;
+        }
+        
+        .pixel-button {
+            background: #000;
+            color: white;
+            border: 4px solid #000;
+        }
+        
+        .pixel-button:hover {
+            background: #333;
+        }
+        
+        .pixel-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #22c55e;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #374151;
+            border: 2px solid #000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-green-400 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="pixel-font text-4xl md:text-6xl text-green-400 mb-4">
+                🎮 AVDH 🎮
+            </h1>
+            <p class="pixel-font text-lg text-green-300">
+                PASTE URL → DOWNLOAD
+            </p>
+        </div>
 
-    function refreshDownloader() {
-      document.getElementById('urlInput').value = '';
-      document.getElementById('result').innerHTML = '';
-      document.getElementById('getBtn').disabled = false;
-      document.getElementById('getBtn').style.display = 'inline-block';
-      document.getElementById('refreshBtn').style.display = 'none';
-    }
-  </script>
+        <!-- Main Input Section -->
+        <div class="max-w-2xl mx-auto">
+            <!-- URL Input -->
+            <div class="mb-8">
+                <input 
+                    type="url" 
+                    id="urlInput" 
+                    placeholder="PASTE ANY VIDEO/AUDIO URL HERE"
+                    class="w-full p-6 text-lg pixel-font text-gray-800 placeholder-gray-500 border-4 border-black focus:outline-none focus:ring-4 focus:ring-green-400"
+                >
+            </div>
+
+            <!-- Download Button -->
+            <div class="text-center mb-8">
+                <button 
+                    onclick="downloadMedia()" 
+                    id="downloadBtn" 
+                    class="pixel-button pixel-font text-2xl px-12 py-6 hover:scale-105 transition-transform duration-200"
+                >
+                    📥 DOWNLOAD
+                </button>
+            </div>
+            
+            <!-- Progress Section -->
+            <div id="progressSection" class="hidden mb-8">
+                <div class="text-center mb-4">
+                    <div class="loader mx-auto mb-4"></div>
+                    <p class="pixel-font text-xl text-yellow-400" id="progressText">
+                        ⏳ PROCESSING YOUR DOWNLOAD...
+                    </p>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="progress-bar mb-4">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                
+                <div class="text-center">
+                    <p class="pixel-font text-sm text-green-300" id="progressDetails">
+                        Initializing download...
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Status Messages -->
+            <div id="status" class="hidden text-center mb-6">
+                <p class="pixel-font text-xl text-yellow-400"></p>
+            </div>
+            
+            <!-- Download Link -->
+            <div id="downloadLink" class="hidden text-center">
+                <div class="border-4 border-green-500 bg-green-900 p-6 inline-block">
+                    <a 
+                        id="downloadButton"
+                        href="#" 
+                        download=""
+                        class="pixel-font text-2xl text-green-400 hover:text-white transition-colors duration-200"
+                    >
+                        🎯 CLICK TO DOWNLOAD
+                    </a>
+                </div>
+                <div class="mt-4">
+                    <p class="pixel-font text-sm text-green-300">
+                        File will be available for download from AVDH Hub
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-16">
+            <p class="pixel-font text-sm text-green-600">
+                POWERED BY YT-DLP • SUPPORTS 1700+ PLATFORMS
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let currentDownload = null;
+        
+        async function downloadMedia() {
+            const url = document.getElementById('urlInput').value.trim();
+            const btn = document.getElementById('downloadBtn');
+            const progressSection = document.getElementById('progressSection');
+            const status = document.getElementById('status');
+            
+            if (!url) {
+                alert('PLEASE ENTER A URL');
+                return;
+            }
+            
+            // Show progress section
+            progressSection.classList.remove('hidden');
+            hideDownloadLink();
+            hideStatus();
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.textContent = 'DOWNLOADING...';
+            
+            // Simulate progress updates
+            simulateProgress();
+            
+            try {
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({url})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show completion
+                    updateProgress(100, '✅ DOWNLOAD COMPLETE!');
+                    
+                    setTimeout(() => {
+                        hideProgress();
+                        showDownloadLink(data);
+                    }, 1000);
+                    
+                } else {
+                    hideProgress();
+                    showStatus(`❌ ${data.error}`, 'red');
+                }
+            } catch (error) {
+                hideProgress();
+                showStatus('❌ DOWNLOAD FAILED. PLEASE TRY AGAIN.', 'red');
+            } finally {
+                // Reset button
+                btn.disabled = false;
+                btn.textContent = '📥 DOWNLOAD';
+            }
+        }
+        
+        function simulateProgress() {
+            let progress = 0;
+            const progressFill = document.getElementById('progressFill');
+            const progressDetails = document.getElementById('progressDetails');
+            
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90; // Don't go to 100% until actually complete
+                
+                updateProgress(progress, '⏳ DOWNLOADING...');
+                
+                if (progress >= 90) {
+                    clearInterval(interval);
+                }
+            }, 500);
+            
+            currentDownload = interval;
+        }
+        
+        function updateProgress(percent, text) {
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressDetails = document.getElementById('progressDetails');
+            
+            progressFill.style.width = percent + '%';
+            progressText.textContent = text;
+            
+            if (percent < 30) {
+                progressDetails.textContent = 'Connecting to server...';
+            } else if (percent < 60) {
+                progressDetails.textContent = 'Downloading media...';
+            } else if (percent < 90) {
+                progressDetails.textContent = 'Processing file...';
+            } else if (percent >= 100) {
+                progressDetails.textContent = 'Ready for download!';
+            }
+        }
+        
+        function hideProgress() {
+            document.getElementById('progressSection').classList.add('hidden');
+            if (currentDownload) {
+                clearInterval(currentDownload);
+                currentDownload = null;
+            }
+        }
+        
+        function showDownloadLink(data) {
+            const downloadButton = document.getElementById('downloadButton');
+            downloadButton.href = data.downloadUrl;
+            downloadButton.download = data.filename;
+            downloadButton.textContent = `🎯 DOWNLOAD: ${data.filename}`;
+            
+            document.getElementById('downloadLink').classList.remove('hidden');
+        }
+        
+        function hideDownloadLink() {
+            document.getElementById('downloadLink').classList.add('hidden');
+        }
+        
+        function showStatus(message, color) {
+            const status = document.getElementById('status');
+            const statusText = status.querySelector('p');
+            statusText.textContent = message;
+            statusText.className = `pixel-font text-xl text-${color}-400`;
+            status.classList.remove('hidden');
+        }
+        
+        function hideStatus() {
+            document.getElementById('status').classList.add('hidden');
+        }
+        
+        // Enter key support
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                downloadMedia();
+            }
+        });
+    </script>
 </body>
 </html>

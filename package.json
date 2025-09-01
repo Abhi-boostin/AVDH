@@ -7,7 +7,9 @@
     "setup": "npm install && npm run install-yt-dlp"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.21.2",
-    "cors": "^2.8.5"
+    "fs-extra": "^11.3.1",
+    "nodemon": "^3.1.10"
   }
 }
